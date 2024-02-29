@@ -1,0 +1,33 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": ["airbnb-base", "prettier"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "root": true,
+  "rules": {
+    "no-console-in-catch": "error",
+    "import/no-cycle":"off",
+    "import/prefer-default-export": "off",
+    "no-return-await": "warn",
+    "camelcase": "off",
+    "no-unused-vars": "warn",
+    "no-bitwise": "warn",
+    "use-isnan": "off",
+    "no-plusplus": "off",
+    "no-restricted-syntax": "off",
+    "no-await-in-loop": "off",
+    "import/no-named-as-default-member": "off",
+    "prefer-promise-reject-errors": "off",
+    "default-param-last": "off",
+    "consistent-return": "off",
+    "no-param-reassign": "off",
+    "no-async-promise-executor": "off",
+    "no-underscore-dangle": "warn",
+    "no-console": "off"
+  }
+}

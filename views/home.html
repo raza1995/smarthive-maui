@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Network</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script type="text/javascript" src="https://unpkg.com/alea@1.0.0/alea.js"></script>
+  <style type="text/css">
+    #mynetwork {
+      width: 80%;
+      height: 600px;
+      border: 1px solid lightgray;
+      float: left;
+    }
+
+    .vis-network {
+      outline: none !important;
+    }
+    div.two{
+      width:18%;
+      padding-left: 10px;
+      display: inline-table;
+    }
+  </style>
+  <script type="text/javascript">
+    window.addEventListener("load", function () {
+      var conf = document.getElementById("conf");
+
+      function handleConfChange() {
+        createNetwork(new FormData(conf));
+      }
+
+      conf.addEventListener("change", handleConfChange);
+      handleConfChange();
+    });
+  </script>
+</head>
+
+<body >
+  <div id="mynetwork"></div>
+  <div class="two">
+    <form id="conf">
+    <p>
+      Layout method:
+      <br />
+
+      <input
+        checked
+        id="layout-method-directed"
+        name="layout-method"
+        type="radio"
+        value="UD"
+      />
+      <label for="layout-method-directed">Up-Down</label>
+      <br />
+
+      <input
+        id="layout-method-hubsize"
+        name="layout-method"
+        type="radio"
+        value="DU"
+      />
+      <label for="layout-method-hubsize">Down-Up</label>
+    </p>
+
+    <p>
+      Layout Sorting:
+      <br />
+
+      <input
+        checked
+        id="layout-method-directed"
+        name="layout-sorting"
+        type="radio"
+        value="directed"
+      />
+      <label for="layout-method-directed">directed</label>
+      <br />
+
+      <input
+        id="layout-method-hubsize"
+        name="layout-sorting"
+        type="radio"
+        value="hubsize"
+      />
+      <label for="layout-method-hubsize">hubsize</label>
+    </p>
+
+    <p>
+      Layout Shake:
+      <br />
+
+      <input
+        checked
+        id="layout-method-directed"
+        name="layout-shake"
+        type="radio"
+        value="leaves"
+      />
+      <label for="layout-method-directed">leaves</label>
+      <br />
+
+      <input
+        id="layout-method-hubsize"
+        name="layout-shake"
+        type="radio"
+        value="roots"
+      />
+      <label for="layout-method-hubsize">roots</label>
+    </p>
+
+
+    </form>
+  </div>
+
+  <script type="text/javascript">
+
+    let myNodes = myEdges = [];
+
+    const colors = {
+      default : 'silver',
+      online : 'green',
+      offline : 'red'
+    }
+
+    const getData = (url) => {
+      return new Promise((resolve, reject) => {
+        fetch(url)
+          .then(res => res.json())
+          .then(res => resolve(res))
+          .catch(err => reject(err))
+      });
+    }
+
+
+    const setData = async (data, level) => {
+      data.connected_devices_details_id.filter(d => nodes.getIds().indexOf(d) < 0).forEach(async (element, index, array) => {
+        newIndex = data.connected_devices_details_id.indexOf(element);
+        node = {
+          id: element,
+          level,
+          size: 20,
+          font : {size : 10},
+          shape: 'dot',
+          label: data.connected_devices_details[newIndex].deviceName,
+          parent : data._id,
+          color : data.connected_devices_details[newIndex].onlineStatus == 'online' ? colors.online : colors.offline,
+        }
+        edge = {
+          id: edges.length + 1,
+          from: element,
+          to: data._id,
+          label: data.interface_connected_to[newIndex].interfaceName,
+        }
+        nodes.add(node)
+        edges.add(edge)
+      });
+    }
+
+
+    const loadData = async (data, level = 0) => {
+      c_data = await getData(`http://127.0.0.1:3000/api/v1/device/connections/${data}`);
+      if (c_data.length > 1) {
+        c_data = c_data[0];
+        await setData(c_data, level);
+      }
+    }
+
+    const initialCall = async (data, level = 0) => {
+      c_data = await getData(`http://127.0.0.1:3000/api/v1/device/connections/${data}`);
+      if (c_data.length > 1) {
+        c_data = c_data[0];
+        node = {
+          id: c_data._id,
+          level,
+          label: c_data.device_name,
+          color : colors.default,
+        }
+
+        nodes.add(node)
+      }
+    }
+
+
+    var network = null;
+
+    var container = document.getElementById("mynetwork");
+
+    var nodes = new vis.DataSet(myNodes);
+    var edges = new vis.DataSet(myEdges);
+
+    var clusterOptionsByData = null;
+
+    // create a network
+    function createNetwork(formData) {
+
+      if (network !== null) {
+        network.destroy();
+        network = null;
+      }
+
+      var data = {
+        nodes: nodes,
+        edges: edges,
+      };
+
+      var options = {
+        nodes : {
+          scaling: {
+              min: 8,
+              max: 32,
+              label: {
+                min: 6,
+                max: 30,
+                drawThreshold: 8,
+                maxVisible: 20,
+              },
+            },
+        },
+        interaction: {
+          dragNodes: true,
+          dragView: true,
+          hideEdgesOnDrag: true,
+          hideEdgesOnZoom: true,
+        },
+        layout: {
+          hierarchical: {
+            direction: formData.get("layout-method"),
+            // sortMethod: formData.get("layout-sorting"), //directed || hubsize
+            // shakeTowards: formData.get("layout-shake"), // leaves || roots
+          },
+        },
+        edges: {
+          smooth: true,
+          font: { size: 1, color: "red", face: "sans", background: "white", align: "middle" },
+          chosen: {
+            edge: function (values, id, selected, hovering) {
+              // console.log(values, id, selected, hovering)
+            },
+            label: function (values, id, selected, hovering) {
+              console.log(values, id, selected, hovering)
+            }
+          }
+        },
+        physics: {
+          hierarchicalRepulsion: {
+            avoidOverlap: 12,
+          },
+        },
+      };
+      
+      network = new vis.Network(container, data, options);
+
+      network.on('click', function (properties) {
+        var ids = properties.nodes;
+        var clickedNodes = nodes.get(ids);
+        if (clickedNodes.length > 0) {
+          node = clickedNodes[clickedNodes.length - 1];
+            loadData(node.id, node.level + 1)
+       }
+      });
+
+      network.on('doubleClick', function (properties) {
+        var ids = properties.nodes;
+        var clickedNodes = nodes.get(ids);
+        if (clickedNodes.length > 0) {
+          node = clickedNodes[clickedNodes.length - 1];
+
+          clusterOptionsByData = {
+            joinCondition: function (childOptions) {
+              // console.log(childOptions)
+              return childOptions.parent == node.id || childOptions.id == node.id;
+            },
+            processProperties: function (clusterOptions, childNodes) {
+              clusterOptions.label = node.label +' '+ (childNodes.length - 1) ;
+              return clusterOptions;
+            },
+            clusterNodeProperties: {
+              id: `cluster${node.id}`,
+              level : node.level,
+              borderWidth: 1,
+              shape: "box",
+              color: '#a5a365',
+            },
+          };
+
+          network.cluster(clusterOptionsByData)
+
+        } else {
+          network.openCluster(ids)
+        }
+
+        network.setOptions({ physics: { stabilization: { fit: false } } });
+          network.stabilize();
+
+      });
+    }
+
+    initialCall('<%=param%>');
+
+
+  </script>
+</body>
+
+</html>
